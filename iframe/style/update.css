@@ -1,0 +1,73 @@
+body {
+  text-align: left;
+  max-width: 470px;
+  margin: 0 auto;
+  padding: 16px;
+  font-family: sans-serif;
+}
+
+/* 所有选项容器 */
+#sch,
+#value,
+#value2,
+#library {
+  display: flex;
+  align-items: center;
+  margin-bottom: 12px;
+  /* 移除 gap，改用 p 的 margin-right 更可控 */
+}
+
+/* 固定左侧文字宽度 */
+#sch p,
+#value p,
+#value2 p,
+#library p {
+  margin: 0;
+  margin-right: 12px; /* 代替 gap */
+  white-space: nowrap;
+  width: 190px; /* 👈 根据最长文字设定固定宽度 */
+  text-align: left; 
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 下拉框样式 */
+#sch select,
+#value select,
+#value2 select,
+#library select {
+  width: 200px; /* 固定宽度 */
+  max-height: 30px;
+  padding: 4px;
+  font-size: 14px;
+  box-sizing: border-box; /* 👈 确保 padding 不撑大总宽 */
+}
+
+#Choose {
+  display: flex;
+  gap: 16px; /* 按钮之间的间距 */
+  justify-content: end; /* 水平居右*/
+  margin-top: 20px;
+}
+
+#Choose button {
+  padding: 10px 24px;       /* 变大：上下10px，左右24px */
+  font-size: 16px;          /* 字体稍大 */
+  border: none;
+  border-radius: 6px;       /* 圆角边框 */
+  cursor: pointer;
+  transition: opacity 0.2s; /* 可选：悬停反馈 */
+}
+
+/* 更新按钮：蓝色背景 + 白色文字 */
+#Choose button:first-child {
+  background-color: #1890ff; 
+  color: white;
+}
+
+
+#Choose button:last-child {
+  background-color: white;
+  color: black;
+  border: 1px solid #d9d9d9; 
+}

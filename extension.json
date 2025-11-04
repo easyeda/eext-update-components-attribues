@@ -1,0 +1,76 @@
+{
+	"name": "eext-update-components-attribues",
+	"uuid": "21a634cce36043598e2f7ad09dd76fae",
+	"displayName": "PRO API SDK",
+	"description": "嘉立创EDA & EasyEDA 专业版扩展 API 开发工具",
+	"version": "1.11.1",
+	"publisher": "JLCEDA <support@lceda.cn>",
+	"engines": {
+		"eda": "^2.3.0"
+	},
+	"license": "Apache-2.0",
+	"repository": {
+		"type": "extension-store",
+		"url": ""
+	},
+	"categories": "Other",
+	"keywords": [
+		"SDK"
+	],
+	"images": {
+		"logo": "./images/logo.png"
+	},
+	"homepage": "https://pro.lceda.cn",
+	"bugs": "https://lceda.cn/page/feedback?originPage=other",
+	"activationEvents": {},
+	"entry": "./dist/index",
+	"dependentExtensions": {},
+	"headerMenus": {
+		"home": [{
+			"id": "API SDK",
+			"title": "API SDK",
+			"menuItems": [{
+				"id": "About",
+				"title": "About...",
+				"registerFn": "about"
+			}]
+		}],
+		"sch": [{
+			"id": "update",
+			"title": "器件更新助手",
+			"menuItems": [{
+					"id": "update",
+					"title": "更新...",
+					"registerFn": "update"
+				},
+				{
+					"id": "test",
+					"title": "重载...",
+					"registerFn": "test"
+				}, {
+					"id": "debug",
+					"title": "调试...",
+					"registerFn": "debug"
+				}
+			]
+		}],
+		"pcb": [{
+			"id": "API SDK",
+			"title": "API SDK",
+			"menuItems": [{
+				"id": "About",
+				"title": "About...",
+				"registerFn": "about"
+			}]
+		}],
+		"footprint": [{
+			"id": "API SDK",
+			"title": "API SDK",
+			"menuItems": [{
+				"id": "About",
+				"title": "About...",
+				"registerFn": "about"
+			}]
+		}]
+	}
+}

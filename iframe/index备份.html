@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="zh-Hans">
+<head>
+    <title>更新原理图器件</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 13px;
+            padding: 8px;
+            margin: 0;
+            width: 500px;
+            height: 300px;
+            box-sizing: border-box;
+            overflow: hidden;
+        }
+        .row {
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+        }
+        .row label {
+            white-space: nowrap;
+            width: 80px;
+        }
+        .row select, .row button {
+            padding: 2px 4px;
+            flex: 1;
+        }
+        button {
+            height: 24px;
+            margin-left: 8px;
+        }
+        #updateFields {
+            font-size: 12px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0 8px;
+            margin-left: 82px;
+        }
+        #updateFields label {
+            display: flex;
+            align-items: center;
+            width: auto;
+            margin-right: 10px;
+        }
+        #messageBar {
+            margin-top: 8px;
+            padding: 4px;
+            height: 18px;
+            color: #d32f2f;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            cursor: pointer;
+        }
+        #messageBar:hover {
+            background: #fff3f3;
+        }
+        .success { color: #388e3c; }
+        .progress-bar {
+            width: 100%;
+            height: 4px;
+            background: #eee;
+            border-radius: 2px;
+            margin-top: 4px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            width: 0%;
+            height: 100%;
+            background: #1976d2;
+            transition: width 0.1s linear;
+        }
+    </style>
+</head>
+<body>
+
+<div class="row">
+    <label for="librarySelect">库来源：</label>
+    <select id="librarySelect" style="flex: 2;">
+        <option value="">--- 请选择 ---</option>
+    </select>
+</div>
+
+<div class="row">
+    <label for="propertySelect">关键词：</label>
+    <select id="propertySelect" style="flex: 2;">
+        <option value="manufacturer">制造商</option>
+        <option value="manufacturerId" selected>制造商编号</option>
+        <option value="supplier">供应商</option>
+        <option value="supplierId">供应商编号(料号)</option>
+    </select>
+</div>
+
+<div id="updateFields">
+    <label><input type="checkbox" value="manufacturer" checked /> 制造商</label>
+    <label><input type="checkbox" value="manufacturerId" checked /> 编号</label>
+    <label><input type="checkbox" value="supplier" checked /> 供应商</label>
+    <label><input type="checkbox" value="supplierId" checked /> 料号</label>
+    <label><input type="checkbox" value="description" checked /> 描述</label>
+</div>
+
+<div class="row" style="justify-content: flex-end; margin-top: 4px;">
+    <button id="exportButton">开始更新</button>
+</div>
+
+<div id="messageBar">加载中...</div>
+<div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+
+<script>
+    const Libraries = document.getElementById('librarySelect');
+    const PropertySelect = document.getElementById('propertySelect');
+    const UpdateFields = document.querySelectorAll('#updateFields input');
+    const messageBar = document.getElementById('messageBar');
+    const progressFill = document.getElementById('progressFill');
+
+    let currentLibraryList = [];
+
+    // 获取所有库列表
+    async function GetAllLibrariesList() {
+        try {
+            const All_Libraries = await eda.lib_LibrariesList.getAllLibrariesList();
+
+            const specialLibs = [
+                { name: '收藏', uuid: await eda.lib_LibrariesList.getFavoriteLibraryUuid() },
+                { name: '个人', uuid: await eda.lib_LibrariesList.getPersonalLibraryUuid() },
+                { name: '当前工程', uuid: await eda.lib_LibrariesList.getProjectLibraryUuid() },
+                { name: '系统', uuid: await eda.lib_LibrariesList.getSystemLibraryUuid() }
+            ];
+
+            const validSpecialLibs = specialLibs.filter(lib => lib.uuid);
+            currentLibraryList = [...All_Libraries, ...validSpecialLibs];
+
+            Libraries.innerHTML = '<option value="">--- 请选择 ---</option>';
+            currentLibraryList.forEach(lib => {
+                const option = document.createElement('option');
+                option.value = lib.uuid;
+                option.textContent = lib.name.length > 15 ? lib.name.slice(0, 14) + '...' : lib.name;
+                Libraries.appendChild(option);
+            });
+
+            messageBar.textContent = '就绪，请设置参数';
+        } catch (error) {
+            console.error('获取库列表失败:', error);
+            messageBar.textContent = '加载失败';
+        }
+    }
+
+    // 页面加载完成后初始化
+    document.addEventListener('DOMContentLoaded', GetAllLibrariesList);
+
+    // 按钮点击事件：开始更新
+    document.getElementById('exportButton').addEventListener('click', async () => {
+        const libraryUuid = Libraries.value;
+        const searchProperty = PropertySelect.value;
+
+        if (!libraryUuid) {
+            messageBar.textContent = '请先选择一个库！';
+            return;
+        }
+
+        const fieldsToUpdate = {};
+        let hasFieldSelected = false;
+        UpdateFields.forEach(cb => {
+            fieldsToUpdate[cb.value] = cb.checked;
+            if (cb.checked) hasFieldSelected = true;
+        });
+
+        if (!hasFieldSelected) {
+            messageBar.textContent = '请至少选一个更新项！';
+            return;
+        }
+
+        try {
+            const SchDevices = await eda.sch_PrimitiveComponent.getAll('part', false);
+            const total = SchDevices.length;
+            if (total === 0) {
+                messageBar.textContent = '未找到原理图器件';
+                return;
+            }
+
+            let updatedCount = 0;
+            let failedCount = 0;
+            const failedDevices = []; // 存储失败的位号
+
+            messageBar.textContent = `准备更新 ${total} 个器件...`;
+            progressFill.style.width = '0%';
+
+            for (let i = 0; i < total; i++) {
+                const device = SchDevices[i];
+                const designator = device.getState_Designator() || `Part_${i}`;
+                let keyword = null;
+
+                switch (searchProperty) {
+                    case 'manufacturer':
+                        keyword = device.getState_Manufacturer();
+                        break;
+                    case 'manufacturerId':
+                        keyword = device.getState_ManufacturerId();
+                        break;
+                    case 'supplier':
+                        keyword = device.getState_Supplier();
+                        break;
+                    case 'supplierId':
+                        keyword = device.getState_SupplierId();
+                        break;
+                }
+
+                if (!keyword || typeof keyword !== 'string') {
+                    failedDevices.push(`${designator}(关键词为空)`);
+                    failedCount++;
+                    continue;
+                }
+
+                // 显示进度
+                messageBar.textContent = `更新中... ${i + 1}/${total}`;
+                progressFill.style.width = `${((i + 1) / total) * 100}%`;
+
+                try {
+                    const results = await eda.lib_Device.search(keyword.trim(), libraryUuid, null, 2, 1, 1);
+                    if (!results || results.length === 0) {
+                        failedDevices.push(`${designator}(无匹配)`);
+                        failedCount++;
+                        continue;
+                    }
+
+                    const libDev = results[0];
+                    const updates = [];
+
+                    if (fieldsToUpdate.manufacturer && libDev.manufacturer)
+                        updates.push(device.setState_Manufacturer(libDev.manufacturer));
+
+                    if (fieldsToUpdate.manufacturerId && libDev.manufacturerId)
+                        updates.push(device.setState_ManufacturerId(libDev.manufacturerId));
+
+                    if (fieldsToUpdate.supplier && libDev.supplier)
+                        updates.push(device.setState_Supplier(libDev.supplier));
+
+                    if (fieldsToUpdate.supplierId && libDev.supplierId)
+                        updates.push(device.setState_SupplierId(libDev.supplierId));
+
+                    if (fieldsToUpdate.description && libDev.description)
+                        updates.push(device.setState_OtherProperty({ Description: libDev.description }));
+					
+                    await Promise.all(updates);
+                    device.done();
+                    updatedCount++;
+                } catch (err) {
+                    console.error(`更新失败(${designator}):`, err);
+                    failedDevices.push(`${designator}(错误)`);
+                    failedCount++;
+                }
+            }
+
+            // 完成后显示结果
+            if (failedCount === 0) {
+                messageBar.textContent = `✅ 全部成功：${updatedCount} 个`;
+                messageBar.className = 'success';
+            } else {
+                const failedList = failedDevices.join(', ');
+                const preview = failedDevices.slice(0, 5).join(', ') + (failedDevices.length > 5 ? '...' : '');
+                messageBar.textContent = `❌ 成功${updatedCount}, 失败${failedCount} (${preview})`;
+                messageBar.title = `失败列表：${failedList}`; // 鼠标悬停显示全部
+                messageBar.className = '';
+            }
+            progressFill.style.width = '100%';
+
+            // 可选：点击 messageBar 弹出详细失败日志
+            messageBar.onclick = () => {
+                if (failedDevices.length > 0) {
+                    alert('更新失败的器件（位号）：\n\n' + failedDevices.map((d, i) => `${i+1}. ${d}`).join('\n'));
+                }
+            };
+
+        } catch (error) {
+            console.error('批量更新异常：', error);
+            messageBar.textContent = '执行出错';
+            messageBar.onclick = () => alert('错误详情：' + error.message);
+        }
+    });
+</script>
+</body>
+</html>
