@@ -12,5 +12,5 @@ export function update() : void {
 }
 
 export function debug(): void{
-	eda.sys_IFrame.openIFrame('/iframe/debug/index.html', 500, 500);
+	eda.sys_IFrame.openIFrame('/iframe/debug/index.html', 600, 500);
 }
