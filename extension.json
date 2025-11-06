@@ -1,12 +1,12 @@
 {
 	"name": "eext-update-components-attribues",
 	"uuid": "21a634cce36043598e2f7ad09dd76fae",
-	"displayName": "eext-update-components-attribues",
-	"description": "器件更新助手",
+	"displayName": "批量更新器件属性参数",
+	"description": "可以通过原理图的元器件属性参数，查找指定库归属的器件信息，再批量更新到原理图，支持仅更新刷新参数和器件删旧放新",
 	"version": "1.11.1",
-	"publisher": "JLCEDA <support@lceda.cn>",
+	"publisher": "JLCEDA",
 	"engines": {
-		"eda": "^2.3.0"
+		"eda": "^2.2.44"
 	},
 	"license": "Apache-2.0",
 	"repository": {
@@ -18,70 +18,26 @@
 	"images": {
 		"logo": "./images/logo.png"
 	},
-	"homepage": "https://pro.lceda.cn",
-	"bugs": "https://lceda.cn/page/feedback?originPage=other",
+	"homepage": "https://github.com/easyeda/eext-update-components-attribues",
+	"bugs": "https://github.com/easyeda/eext-update-components-attribues/issues",
 	"activationEvents": {},
 	"entry": "./dist/index",
 	"dependentExtensions": {},
 	"headerMenus": {
-		"home": [
-			{
-				"id": "API SDK",
-				"title": "API SDK",
-				"menuItems": [
-					{
-						"id": "About",
-						"title": "About...",
-						"registerFn": "about"
-					}
-				]
-			}
-		],
 		"sch": [
 			{
 				"id": "update",
-				"title": "器件更新助手",
+				"title": "批量更新器件属性",
 				"menuItems": [
 					{
 						"id": "update",
-						"title": "更新...",
+						"title": "通过刷新属性参数更新元器件...",
 						"registerFn": "update"
 					},
 					{
 						"id": "test",
-						"title": "重载...",
+						"title": "通过删旧放新更新元器件...",
 						"registerFn": "test"
-					},
-					{
-						"id": "debug",
-						"title": "调试...",
-						"registerFn": "debug"
-					}
-				]
-			}
-		],
-		"pcb": [
-			{
-				"id": "API SDK",
-				"title": "API SDK",
-				"menuItems": [
-					{
-						"id": "About",
-						"title": "About...",
-						"registerFn": "about"
-					}
-				]
-			}
-		],
-		"footprint": [
-			{
-				"id": "API SDK",
-				"title": "API SDK",
-				"menuItems": [
-					{
-						"id": "About",
-						"title": "About...",
-						"registerFn": "about"
 					}
 				]
 			}
