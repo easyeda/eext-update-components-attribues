@@ -1,7 +1,7 @@
 {
 	"name": "eext-update-components-attribues",
 	"uuid": "21a634cce36043598e2f7ad09dd76fae",
-	"displayName": "批量更新器件属性参数",
+	"displayName": "更新器件属性",
 	"description": "可以通过原理图的元器件属性参数，查找指定库归属的器件信息，再批量更新到原理图，支持仅更新刷新参数和器件删旧放新",
 	"version": "1.11.1",
 	"publisher": "JLCEDA",
@@ -27,16 +27,16 @@
 		"sch": [
 			{
 				"id": "update",
-				"title": "批量更新器件属性",
+				"title": "更新器件属性",
 				"menuItems": [
 					{
 						"id": "update",
-						"title": "通过刷新属性参数更新元器件...",
+						"title": "通过刷新器件属性更新...",
 						"registerFn": "update"
 					},
 					{
 						"id": "test",
-						"title": "通过删旧放新更新元器件...",
+						"title": "通过元件删旧放新更新...",
 						"registerFn": "test"
 					}
 				]

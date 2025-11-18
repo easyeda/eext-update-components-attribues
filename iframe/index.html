@@ -1,14 +1,15 @@
 <!doctype html>
 <html lang="zh-Hans">
 	<head>
-		<title>通过刷新属性参数更新元件属性</title>
+		<title>通过刷新器件属性更新</title>
 		<meta charset="utf-8" />
 		<link rel="stylesheet" href="/iframe/style/update.css" />
 		<script src="/iframe/script.js"></script>
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 	</head>
+
 	<body>
-		<p>将根据所选元素的属性名的值进行查询库里面的器件，再对原理图的元件属性参数进行批量更新</p>
+		<p>将根据所选元件的属性名的值，进行查询库里面匹配的器件，再对原理图的元件属性参数进行批量更新</p>
 		<div id="sch">
 			<p>选择要更新的原理图</p>
 			<select name="test" id="select1">
@@ -21,9 +22,10 @@
 				<option value="" disabled selected>请选择...</option>
 				<option value="Device">器件名(Device)</option>
 				<option value="PartNumber">料号(Part Number)</option>
-				<option value="Symber">符号名(Symber)</option>
+				<option value="Symber">符号名(Symbol)</option>
 				<option value="ManufacturerPart">制造商编号（Manufacturer Part）</option>
-				<option value="value">值(value)</option>
+				<option value="SupplierPart">供应商编号（Supplier Part）</option>
+				<option value="Value">值(Value)</option>
 				<option value="PartCode">元件编码(Part Code)</option>
 			</select>
 		</div>
@@ -37,19 +39,17 @@
 				<option value="" disabled selected>请选择...</option>
 				<option value="Device">器件名(Device)</option>
 				<option value="PartNumber">料号(Part Number)</option>
-				<option value="Symber">符号名(Symber)</option>
+				<option value="Symbol">符号名(Symbol)</option>
 				<option value="ManufacturerPart">制造商编号（Manufacturer Part）</option>
-				<option value="value">值(value)</option>
+				<option value="SupplierPart">供应商编号（Supplier Part）</option>
+				<option value="Value">值(Value)</option>
 				<option value="PartCode">元件编码(Part Code)</option>
 			</select>
 		</div>
-		<p>警告，这个操作会把所有元器件查询一次进行更新，建议操作前先备份工程</p>
+		<p>警告，这个操作会把当前原理图里面的所有元器件都查询一次进行更新，建议操作前先备份工程。</p>
 		<div id="Choose">
 			<button id="startbutton">更新</button>
 			<button id="closebutton">取消</button>
 		</div>
 	</body>
 </html>
-		
-
-		
