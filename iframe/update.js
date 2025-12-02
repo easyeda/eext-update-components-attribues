@@ -21,15 +21,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 		schselect.disabled = true;
 
 		const libs = await eda.lib_LibrariesList.getAllLibrariesList();
-		const [personalUuid, projectUuid, favoriteUuid] = await Promise.all([
-			// eda.lib_LibrariesList.getSystemLibraryUuid(),
+		const [sysUuid, personalUuid, projectUuid, favoriteUuid] = await Promise.all([
+			eda.lib_LibrariesList.getSystemLibraryUuid(),
 			eda.lib_LibrariesList.getPersonalLibraryUuid(),
 			eda.lib_LibrariesList.getProjectLibraryUuid(),
 			eda.lib_LibrariesList.getFavoriteLibraryUuid(),
 		]);
 
 		const allOptions = [
-			// { uuid: sysUuid, name: '系统' },
 			{ uuid: personalUuid, name: '个人' },
 			{ uuid: projectUuid, name: '工程' },
 			{ uuid: favoriteUuid, name: '收藏' },
@@ -62,6 +61,64 @@ document.addEventListener('DOMContentLoaded', async () => {
 		if (dynamicOpts) {
 			select2.insertAdjacentHTML('beforeend', dynamicOpts);
 		}
+
+		// —————— 绑定开始按钮 ——————
+		document.getElementById('startbutton').addEventListener('click', async () => {
+			const searchField = select2.value;
+			const libUuid = select.value;
+
+			assert(libUuid, '请选择库归属');
+			assert(searchField, '请选择搜索字段');
+
+			const devices = await eda.sch_PrimitiveComponent.getAll('part', true);
+
+			const searchGetterMap = {
+				Device: (d) => d.getState_Name(),
+				PartNumber: (d) => d.getState_OtherProperty('PartNumber'),
+				ManufacturerPart: (d) => d.getState_ManufacturerId(),
+				SupplierPart: (d) => d.getState_SupplierId(),
+				Value: (d) => d.getState_OtherProperty('Value'),
+				PartCode: (d) => d.getState_OtherProperty('Part Code'),
+			};
+
+			const getSearchValue = (d, field) => {
+				if (searchGetterMap[field]) return searchGetterMap[field](d);
+				const props = d.getState_OtherProperty();
+				if (props && props.hasOwnProperty(field)) {
+					const v = props[field];
+					if ((typeof v === 'string' || typeof v === 'number') && v !== '') {
+						return String(v);
+					}
+				}
+				return null;
+			};
+
+			for (const d of devices) {
+				const keyword = getSearchValue(d, searchField);
+				if (!keyword) continue;
+
+				const results = await eda.lib_Device.search(keyword, libUuid, null, null, 10000, 1);
+				if (results.length === 0) continue;
+
+				const dev = results[0];
+				const uuid = d.getState_PrimitiveId();
+				let delete_result = await eda.sch_PrimitiveComponent.delete(uuid);
+				if (delete_result) {
+					await eda.sch_PrimitiveComponent.create(
+						d.getState_Component(),
+						d.getState_X(),
+						d.getState_Y(),
+						d.getState_SubPartName(),
+						d.getState_Rotation(),
+						d.getState_Mirror(),
+						d.getState_AddIntoBom(),
+						d.getState_AddIntoPcb(),
+					);
+				} else {
+					console.log('异常', delete_result);
+				}
+			}
+		});
 
 		document.getElementById('closebutton').addEventListener('click', () => {
 			eda.sys_IFrame.closeIFrame();
