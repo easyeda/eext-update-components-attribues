@@ -10,10 +10,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 		const projectInfo = await eda.dmt_Project.getCurrentProjectInfo();
 		const data = Array.isArray(projectInfo?.data) ? projectInfo.data : [];
 		console.log('项目原理图数据:', data);
-
+	
 		// 找到第一个有效的原理图名称
-		const firstSchematic = data.find((item) => item?.schematic?.name)?.schematic?.name;
-
+		const firstSchematic = data.find(item => item?.schematic?.name)?.schematic?.name;
+	
 		if (firstSchematic) {
 			// 只显示一个不可更改的选项，并默认选中
 			schselect.innerHTML = `<option value="${firstSchematic}" selected>${firstSchematic}</option>`;
@@ -25,24 +25,25 @@ document.addEventListener('DOMContentLoaded', async () => {
 		schselect.innerHTML = '<option value="" disabled selected>加载失败</option>';
 	}
 
+
 	// —————— 2. 填充库归属下拉框 ——————
 	const libs = await eda.lib_LibrariesList.getAllLibrariesList();
-	const [personalUuid, projectUuid, favoriteUuid] = await Promise.all([
+	const [sysUuid, personalUuid, projectUuid, favoriteUuid] = await Promise.all([
+		eda.lib_LibrariesList.getSystemLibraryUuid(),
 		eda.lib_LibrariesList.getPersonalLibraryUuid(),
 		eda.lib_LibrariesList.getProjectLibraryUuid(),
-		eda.lib_LibrariesList.getFavoriteLibraryUuid(),
+		eda.lib_LibrariesList.getFavoriteLibraryUuid()
 	]);
 
 	const allOptions = [
 		{ uuid: personalUuid, name: '个人' },
 		{ uuid: projectUuid, name: '工程' },
 		{ uuid: favoriteUuid, name: '收藏' },
-		...libs,
-	].filter((lib) => lib.uuid && lib.name);
+		...libs
+	].filter(lib => lib.uuid && lib.name);
 
-	select.innerHTML =
-		'<option value="" disabled selected>请选择库归属</option>' +
-		allOptions.map((lib) => `<option value="${lib.uuid}">${lib.name}</option>`).join('');
+	select.innerHTML = '<option value="" disabled selected>请选择库归属</option>' +
+		allOptions.map(lib => `<option value="${lib.uuid}">${lib.name}</option>`).join('');
 
 	// —————— 3. 动态追加 OtherProperty 字段 ——————
 	const allDevices = await eda.sch_PrimitiveComponent.getAll('part', true);
@@ -51,7 +52,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 	for (const device of allDevices) {
 		const props = device.getState_OtherProperty();
 		if (props && typeof props === 'object' && !Array.isArray(props)) {
-			Object.keys(props).forEach((key) => {
+			Object.keys(props).forEach(key => {
 				if (key && typeof key === 'string') {
 					otherPropKeys.add(key.trim());
 				}
@@ -61,7 +62,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 	const dynamicOpts = Array.from(otherPropKeys)
 		.sort()
-		.map((k) => `<option value="${k}">${k}</option>`)
+		.map(k => `<option value="${k}">${k}</option>`)
 		.join('');
 
 	if (dynamicOpts) {
@@ -78,12 +79,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 		const devices = await eda.sch_PrimitiveComponent.getAll('part', true);
 
 		const searchGetterMap = {
-			Device: (d) => d.getState_Name(),
-			PartNumber: (d) => d.getState_OtherProperty('Part Number'),
-			ManufacturerPart: (d) => d.getState_ManufacturerId(),
-			SupplierPart: (d) => d.getState_SupplierId(),
-			Value: (d) => d.getState_OtherProperty('Value'),
-			PartCode: (d) => d.getState_OtherProperty('Part Code'),
+			Device: d => d.getState_Name(),
+			PartNumber: d => d.getState_SupplierId(),
+			Symber: d => d.getState_Name(),
+			ManufacturerPart: d => d.getState_ManufacturerId(),
+			value: d => d.getState_Name(),
+			PartCode: d => d.getState_Designator()
 		};
 
 		const getSearchValue = (d, field) => {
@@ -109,7 +110,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 			const dev = results[0];
 			const uuid = d.getState_PrimitiveId();
 			let delete_relust = await eda.sch_PrimitiveComponent.delete(uuid);
-			console.log('返回值', delete_relust);
+			console.log("返回值",delete_relust);
 			console.log(delete_relust);
 			console.log(d.getState_Component());
 			if (delete_relust) {
@@ -121,10 +122,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 					d.getState_Rotation(),
 					d.getState_Mirror(),
 					d.getState_AddIntoBom(),
-					d.getState_AddIntoPcb(),
+					d.getState_AddIntoPcb()
 				);
-			} else {
-				console.log('异常', delete_relust);
+			}else
+			{
+				console.log("异常",delete_relust);
 			}
 		}
 	});
