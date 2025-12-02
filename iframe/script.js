@@ -3,40 +3,27 @@ const assert = (cond, msg = 'Assertion failed') => {
 };
 
 document.addEventListener('DOMContentLoaded', async () => {
-	const select = document.getElementById('select3'); // 库归属
-	const schselect = document.getElementById('select1'); // 原理图
-	const select2 = document.getElementById('select2'); // 搜索依据（动态追加）
+	const select = document.getElementById('select3');
+	const schselect = document.getElementById('select1');
+	const select2 = document.getElementById('select2');
 
 	try {
-		// ================================
-		// 1. 填充原理图下拉框（支持多个原理图）
-		// ================================
 		const projectInfo = await eda.dmt_Project.getCurrentProjectInfo();
-		console.log(projectInfo);
 		const data = Array.isArray(projectInfo?.data) ? projectInfo.data : [];
 
-		let schOptionsHTML = '<option value="" disabled selected>请选择原理图</option>';
-		let hasSchematic = false;
-
+		let schName = '';
 		for (const item of data) {
 			if (item?.schematic?.name) {
-				const schName = item.schematic.name;
-				schOptionsHTML += `<option value="${schName}">${schName}</option>`;
-				hasSchematic = true;
+				schName = item.schematic.name;
+				break;
 			}
 		}
 
-		if (!hasSchematic) {
-			schOptionsHTML = '<option value="" disabled selected>无可用原理图</option>';
-		}
-		schselect.innerHTML = schOptionsHTML;
+		schselect.innerHTML = schName ? `<option value="${schName}" selected>${schName}</option>` : '<option value="" disabled>无可用原理图</option>';
+		schselect.disabled = true;
 
-		// ================================
-		// 2. 填充库归属下拉框
-		// ================================
 		const libs = await eda.lib_LibrariesList.getAllLibrariesList();
 
-		// 获取特殊库 UUID（注意顺序！）
 		const [personalUuid, projectUuid, favoriteUuid] = await Promise.all([
 			eda.lib_LibrariesList.getPersonalLibraryUuid(),
 			eda.lib_LibrariesList.getProjectLibraryUuid(),
@@ -48,15 +35,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 			{ uuid: projectUuid, name: '工程' },
 			{ uuid: favoriteUuid, name: '收藏' },
 			...libs,
-		].filter((lib) => lib.uuid && lib.name); // 过滤无效项
+		].filter((lib) => lib.uuid && lib.name);
 
 		select.innerHTML =
 			'<option value="" disabled selected>请选择库归属</option>' +
 			allOptions.map((lib) => `<option value="${lib.uuid}">${lib.name}</option>`).join('');
 
-		// ================================
-		// 3. 动态追加 OtherProperty 字段到 select2
-		// ================================
 		const allDevices = await eda.sch_PrimitiveComponent.getAll('part', true);
 		const otherPropKeys = new Set();
 
@@ -86,12 +70,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 		select2.innerHTML = staticOptions + dynamicOptionsHTML;
 
-		// ================================
-		// 4. 绑定按钮事件
-		// ================================
 		document.getElementById('startbutton').addEventListener('click', async () => {
-			const searchField = document.getElementById('select2').value; // 搜索依据
-			const outputField = document.getElementById('select4').value; // 输出/写回字段
+			const searchField = document.getElementById('select2').value;
+			const outputField = document.getElementById('select4').value;
 			const libUuid = select.value;
 
 			assert(libUuid, '请选择库归属');
@@ -100,17 +81,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 			const devices = await eda.sch_PrimitiveComponent.getAll('part', true);
 
-			// 搜索字段映射：如何从器件获取关键词
 			const searchGetterMap = {
 				Device: (d) => d.getState_ManufacturerId(),
 				PartNumber: (d) => d.getState_SupplierId(),
 				Symber: (d) => d.getState_Name(),
 				ManufacturerPart: (d) => d.getState_ManufacturerId(),
-				value: (d) => d.getState_Name(), // 注意：这里可能应为 getState_Value()？根据实际 API 调整
+				value: (d) => d.getState_Name(),
 				PartCode: (d) => d.getState_Designator(),
 			};
 
-			// 输出动作：如何将搜索结果写回器件
 			const outputActions = {
 				Device: (r, d) => {
 					const DeviceName = r.name;
@@ -126,7 +105,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 				},
 				Symber: (r, d) => {
 					console.log('ℹ️ 关联符号名:', r.symbolName);
-					// 如果需要设置符号，需调用其他 API，此处仅日志
 				},
 				ManufacturerPart: (r, d) => {
 					const manuId = r.manufacturerId;
@@ -141,7 +119,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 					if (DeviceValue != null && DeviceValue !== '') {
 						console.log('📌 写入属性 value:', DeviceValue);
 						d.setState_OtherProperty({ value: DeviceValue });
-						d.done(); // 注意：某些 API 可能要求 done()
+						d.done();
 					}
 				},
 				PartCode: (r, d) => {
@@ -178,7 +156,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 			alert(`操作完成！共更新 ${processedCount} 个器件。`);
 		});
 
-		// 关闭按钮
 		document.getElementById('closebutton').addEventListener('click', () => {
 			eda.sys_IFrame.closeIFrame();
 		});
