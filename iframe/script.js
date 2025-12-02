@@ -73,11 +73,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 		const staticOptions = `
             <option value="" disabled selected>请选择搜索字段</option>
-            <option value="Device">器件名 (ManufacturerId)</option>
-            <option value="PartNumber">料号 (SupplierId)</option>
+            <option value="Device">器件名 (Device)</option>
+            <option value="PartNumber">料号 (Part Number)</option>
             <option value="Symber">符号名 (Name)</option>
-            <option value="ManufacturerPart">制造商编号</option>
-            <option value="value">值 (value)</option>
+            <option value="ManufacturerPart">制造商编号(ManufacturerPart)</option>
             <option value="PartCode">编号 (Designator)</option>
         `;
 		const dynamicOptionsHTML = Array.from(otherPropKeys)
