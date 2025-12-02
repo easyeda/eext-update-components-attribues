@@ -4,14 +4,13 @@
 		<title>通过删除放置更新元件</title>
 		<meta charset="utf-8" />
 		<link rel="stylesheet" href="/iframe/style/update.css" />
-		<script src="/iframe/update.js"></script>
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 	</head>
 
 	<body>
 		<p>将根据所选元素的属性名的值进行查询库里面的器件，再对原理图的元件属性参数进行批量更新</p>
 		<div id="sch">
-			<p>选择要更新的原理图</p>
+			<p>当前原理图：</p>
 			<select name="test" id="select1">
 				<option value="">正在读取</option>
 			</select>
@@ -37,5 +36,8 @@
 			<button id="startbutton">更新</button>
 			<button id="closebutton">取消</button>
 		</div>
+
+		<!-- ✅ 脚本移到这里，确保 DOM 已加载 -->
+		<script src="/iframe/update.js"></script>
 	</body>
 </html>
