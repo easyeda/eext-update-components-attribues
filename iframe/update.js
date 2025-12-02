@@ -113,6 +113,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 						d.getState_Mirror(),
 						d.getState_AddIntoBom(),
 						d.getState_AddIntoPcb(),
+						d.getState_Designator(),
 					);
 				} else {
 					console.log('异常', delete_result);
