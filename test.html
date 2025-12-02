@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="zh">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>MQTT 网络对讲机</title>
+		<script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+		<style>
+			body {
+				font-family: Arial, sans-serif;
+				padding: 20px;
+				background: #f4f4f4;
+			}
+			.container {
+				max-width: 600px;
+				margin: auto;
+				background: white;
+				padding: 20px;
+				border-radius: 8px;
+				box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+			}
+			input,
+			button {
+				padding: 10px;
+				margin: 10px 0;
+				width: 100%;
+				box-sizing: border-box;
+			}
+			button {
+				background: #007bff;
+				color: white;
+				border: none;
+				cursor: pointer;
+			}
+			button:disabled {
+				background: #ccc;
+				cursor: not-allowed;
+			}
+			.status {
+				padding: 10px;
+				margin: 10px 0;
+				border-radius: 4px;
+				background: #eee;
+			}
+			.log {
+				height: 150px;
+				overflow-y: scroll;
+				background: #f9f9f9;
+				padding: 10px;
+				border: 1px solid #ddd;
+				font-size: 0.9em;
+			}
+		</style>
+	</head>
+	<body>
+		<div class="container">
+			<h2>🎙️ MQTT 网络对讲机</h2>
+
+			<label>MQTT Broker 地址:</label>
+			<input type="text" id="brokerHost" placeholder="例如：192.168.1.100 或 broker.example.com" />
+
+			<button id="connectBtn">连接</button>
+			<button id="startTalkBtn" disabled>按住说话</button>
+
+			<div class="status" id="status">状态：未连接</div>
+			<div class="log" id="log"></div>
+		</div>
+
+		<script>
+			let client = null;
+			let isTalking = false;
+			let mediaRecorder = null;
+			let audioChunks = [];
+			const topic = 'voice/broadcast';
+
+			const statusEl = document.getElementById('status');
+			const logEl = document.getElementById('log');
+			const connectBtn = document.getElementById('connectBtn');
+			const startTalkBtn = document.getElementById('startTalkBtn');
+			const brokerHostInput = document.getElementById('brokerHost');
+
+			function log(msg) {
+				const entry = document.createElement('div');
+				entry.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+				logEl.appendChild(entry);
+				logEl.scrollTop = logEl.scrollHeight;
+			}
+
+			// 连接 MQTT
+			connectBtn.addEventListener('click', () => {
+				const host = brokerHostInput.value.trim();
+				if (!host) {
+					alert('请输入 MQTT Broker 地址');
+					return;
+				}
+
+				const wsUrl = `ws://${host}:8083/mqtt`;
+				statusEl.textContent = `正在连接 ${wsUrl}...`;
+				log(`连接到 ${wsUrl}`);
+
+				client = mqtt.connect(wsUrl, {
+					protocolVersion: 4, // MQTT 3.1.1
+					clean: true,
+					reconnectPeriod: 3000,
+				});
+
+				client.on('connect', () => {
+					statusEl.textContent = '已连接！订阅中...';
+					log('✅ 连接成功');
+					client.subscribe(topic, (err) => {
+						if (!err) {
+							log(`👂 已订阅主题: ${topic}`);
+							startTalkBtn.disabled = false;
+						} else {
+							log(`❌ 订阅失败: ${err}`);
+						}
+					});
+				});
+
+				client.on('message', (receivedTopic, payload) => {
+					if (receivedTopic === topic) {
+						try {
+							const dataStr = new TextDecoder().decode(payload);
+							const { audioBase64 } = JSON.parse(dataStr);
+							playAudio(audioBase64);
+							log('🔊 收到广播语音');
+						} catch (e) {
+							log('⚠️ 解析音频消息失败');
+						}
+					}
+				});
+
+				client.on('error', (err) => {
+					log(`❌ 连接错误: ${err.message}`);
+					statusEl.textContent = '连接失败';
+				});
+
+				client.on('close', () => {
+					log('🔌 连接已关闭');
+					statusEl.textContent = '连接已关闭';
+					startTalkBtn.disabled = true;
+				});
+			});
+
+			// 按住说话
+			startTalkBtn.addEventListener('mousedown', async () => {
+				if (isTalking) return;
+				isTalking = true;
+				startTalkBtn.textContent = '松开结束';
+
+				try {
+					const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+					mediaRecorder = new MediaRecorder(stream);
+
+					audioChunks = [];
+					mediaRecorder.ondataavailable = (event) => {
+						audioChunks.push(event.data);
+					};
+
+					mediaRecorder.onstop = () => {
+						const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+						const reader = new FileReader();
+						reader.onload = () => {
+							const base64Audio = reader.result.split(',')[1]; // 去掉 data:audio/webm;base64,
+							// 发布音频
+							if (client && client.connected) {
+								client.publish(
+									topic,
+									JSON.stringify({
+										audioBase64: base64Audio,
+										timestamp: Date.now(),
+									}),
+								);
+								log('📤 广播语音已发送');
+							}
+						};
+						reader.readAsDataURL(audioBlob);
+					};
+
+					mediaRecorder.start();
+					log('🎤 开始录音...');
+				} catch (err) {
+					log(`🚫 无法访问麦克风: ${err.message}`);
+					isTalking = false;
+					startTalkBtn.textContent = '按住说话';
+				}
+			});
+
+			startTalkBtn.addEventListener('mouseup', () => {
+				if (!isTalking) return;
+				isTalking = false;
+				startTalkBtn.textContent = '按住说话';
+
+				if (mediaRecorder && mediaRecorder.state === 'recording') {
+					mediaRecorder.stop();
+					// 停止所有轨道
+					mediaRecorder.stream.getTracks().forEach((track) => track.stop());
+				}
+			});
+
+			startTalkBtn.addEventListener('mouseout', () => {
+				if (startTalkBtn === document.activeElement) {
+					startTalkBtn.blur(); // 防止鼠标移出时仍触发
+				}
+			});
+
+			// 播放音频
+			function playAudio(base64Audio) {
+				const audioSrc = `data:audio/webm;base64,${base64Audio}`;
+				const audio = new Audio(audioSrc);
+				audio.play().catch((e) => console.warn('播放失败:', e));
+			}
+		</script>
+	</body>
+</html>
