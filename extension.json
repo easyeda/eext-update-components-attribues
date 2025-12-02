@@ -51,11 +51,6 @@
 						"id": "test",
 						"title": "通过删除放置更新元件...",
 						"registerFn": "test"
-					},
-					{
-						"id": "debug",
-						"title": "调试...",
-						"registerFn": "debug"
 					}
 				]
 			}
