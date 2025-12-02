@@ -27,8 +27,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 	// —————— 2. 填充库归属下拉框 ——————
 	const libs = await eda.lib_LibrariesList.getAllLibrariesList();
-	const [sysUuid, personalUuid, projectUuid, favoriteUuid] = await Promise.all([
-		eda.lib_LibrariesList.getSystemLibraryUuid(),
+	const [personalUuid, projectUuid, favoriteUuid] = await Promise.all([
 		eda.lib_LibrariesList.getPersonalLibraryUuid(),
 		eda.lib_LibrariesList.getProjectLibraryUuid(),
 		eda.lib_LibrariesList.getFavoriteLibraryUuid(),
@@ -80,11 +79,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 		const searchGetterMap = {
 			Device: (d) => d.getState_Name(),
-			PartNumber: (d) => d.getState_SupplierId(),
-			Symber: (d) => d.getState_Name(),
+			PartNumber: (d) => d.getState_OtherProperty('Part Number'),
 			ManufacturerPart: (d) => d.getState_ManufacturerId(),
-			value: (d) => d.getState_Name(),
-			PartCode: (d) => d.getState_Designator(),
+			SupplierPart: (d) => d.getState_SupplierId(),
+			Value: (d) => d.getState_OtherProperty('Value'),
+			PartCode: (d) => d.getState_OtherProperty('Part Code'),
 		};
 
 		const getSearchValue = (d, field) => {
