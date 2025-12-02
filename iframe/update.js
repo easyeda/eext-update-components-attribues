@@ -33,14 +33,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 	// —————— 2. 填充库归属下拉框 ——————
 	const libs = await eda.lib_LibrariesList.getAllLibrariesList();
 	const [sysUuid, personalUuid, projectUuid, favoriteUuid] = await Promise.all([
-		eda.lib_LibrariesList.getSystemLibraryUuid(),
+		// eda.lib_LibrariesList.getSystemLibraryUuid(),
 		eda.lib_LibrariesList.getPersonalLibraryUuid(),
 		eda.lib_LibrariesList.getProjectLibraryUuid(),
 		eda.lib_LibrariesList.getFavoriteLibraryUuid(),
 	]);
 
 	const allOptions = [
-		{ uuid: sysUuid, name: '系统' },
+		// { uuid: sysUuid, name: '系统' },
 		{ uuid: personalUuid, name: '个人' },
 		{ uuid: projectUuid, name: '工程' },
 		{ uuid: favoriteUuid, name: '收藏' },
@@ -86,11 +86,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 		const searchGetterMap = {
 			Device: (d) => d.getState_ManufacturerId(),
-			PartNumber: (d) => d.getState_SupplierId(),
-			Symber: (d) => d.getState_Name(),
+			PartNumber: (d) => d.getState_OtherProperty('Part Number'),
+			Symbol: (d) => d.getState_Name(),
 			ManufacturerPart: (d) => d.getState_ManufacturerId(),
-			value: (d) => d.getState_Name(),
-			PartCode: (d) => d.getState_Designator(),
+			Value: (d) => d.getState_OtherProperty('Value'),
+			PartCode: (d) => d.getState_OtherProperty('Part Code'),
 		};
 
 		const getSearchValue = (d, field) => {
