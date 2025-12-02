@@ -57,11 +57,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 		const staticOptions = `
             <option value="" disabled selected>请选择搜索字段</option>
-            <option value="Device">器件名 (Device)</option>
-            <option value="PartNumber">料号 (Part Number)</option>
-            <option value="Symber">符号名 (Name)</option>
-            <option value="ManufacturerPart">制造商编号(ManufacturerPart)</option>
-            <option value="PartCode">编号 (Designator)</option>
+            <option value="Device">器件名(Device)</option>
+            <option value="PartNumber">料号(Part Number)</option>
+            <option value="ManufacturerPart">制造商编号(Manufacturer Part)</option>
+            <option value="SupplierPart">制造商编号(Supplier Part)</option>
+            <option value="Value">值(Value)</option>
+            <option value="PartCode">物料编码(Part Code)</option>
         `;
 		const dynamicOptionsHTML = Array.from(otherPropKeys)
 			.sort()
@@ -82,12 +83,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 			const devices = await eda.sch_PrimitiveComponent.getAll('part', true);
 
 			const searchGetterMap = {
-				Device: (d) => d.getState_ManufacturerId(),
-				PartNumber: (d) => d.getState_SupplierId(),
-				Symber: (d) => d.getState_Name(),
+				Device: (d) => d.getState_Name(),
+				PartNumber: (d) => d.getState_OtherProperty('Part Number'),
 				ManufacturerPart: (d) => d.getState_ManufacturerId(),
-				value: (d) => d.getState_Name(),
-				PartCode: (d) => d.getState_Designator(),
+				SupplierPart: (d) => d.getState_SupplierId(),
+				Value: (d) => d.getState_OtherProperty('Value'),
+				PartCode: (d) => d.getState_OtherProperty('Part Code'),
 			};
 
 			const outputActions = {
@@ -103,9 +104,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 					d.setState_SupplierId(SupId);
 					d.done();
 				},
-				Symber: (r, d) => {
-					console.log('ℹ️ 关联符号名:', r.symbolName);
-				},
 				ManufacturerPart: (r, d) => {
 					const manuId = r.manufacturerId;
 					if (manuId != null && manuId !== '') {
@@ -114,7 +112,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 						d.done();
 					}
 				},
-				value: (r, d) => {
+				Value: (r, d) => {
 					const DeviceValue = r.value;
 					if (DeviceValue != null && DeviceValue !== '') {
 						console.log('📌 写入属性 value:', DeviceValue);
