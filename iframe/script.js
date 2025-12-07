@@ -2,11 +2,14 @@ const assert = (cond, msg = 'Assertion failed') => {
 	if (!cond) throw new Error(msg);
 };
 
+function convertId(id) {
+	return id.replace(/^\$1I/, 'e');
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
 	const select = document.getElementById('select3'); // 库归属选择
 	const schselect = document.getElementById('select1'); // 原理图名称
 	const select2 = document.getElementById('select2'); // 搜索字段
-	// 注意：必须确保页面中有 id="select4" 的元素
 	const select4 = document.getElementById('select4'); // 输出字段
 
 	// 获取项目信息
@@ -104,10 +107,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 		// 搜索关键字提取函数
 		const searchGetterMap = {
-			Device: (d) => d.getState_Name?.(), // 修正：应为 Name 而非 ManufacturerId
+			Device: (d) => d.getState_Name?.(),
 			PartNumber: (d) => d.getState_SupplierId?.(),
 			ManufacturerPart: (d) => d.getState_ManufacturerId?.(),
-			value: (d) => d.getState_Name?.(), // 或从 OtherProperty 中取？
+			value: (d) => d.getState_Name?.(),
 		};
 
 		// 输出更新动作
@@ -143,7 +146,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 				const DeviceValue = r.value;
 				if (DeviceValue) {
 					const currentProps = d.getState_OtherProperty() || {};
-					d.setState_OtherProperty({ ...currentProps, value: DeviceValue }); // 合并，避免覆盖
+					d.setState_OtherProperty({ ...currentProps, value: DeviceValue });
 					d.done();
 					return true;
 				}
@@ -159,7 +162,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 				}
 				return false;
 			},
-			Symber: () => false, // 已废弃字段，直接失败
+			Symber: () => false,
 		};
 
 		assert(searchGetterMap[searchField], `未知的搜索字段: ${searchField}`);
@@ -168,45 +171,33 @@ document.addEventListener('DOMContentLoaded', async () => {
 		// 主处理循环
 		for (const d of devices) {
 			const designator = d.getState_Designator?.() || 'unknown'; //安全调用 这段是AI写的，非空即调 有点der
-			const deviceName =
-				`<span class="link clicked" data-log-find-sheet="" data-log-find-id="" data-log-find-type="rect" data-log-find-path="">` +
-				d.getState_PrimitiveId() +
-				`</span>`;
+			const DocInfo = await eda.dmt_Schematic.getCurrentSchematicInfo();
+			const Device_PinId = convertId(d.getState_PrimitiveId());
+			let PinId = await eda.sch_PrimitiveComponent.getAllPinsByPrimitiveId(Device_PinId);
+			PinId = PinId[0].primitiveId;
+
+			const deviceName = `<span class="link" data-log-find-id="${PinId}" data-log-find-sheet="${DocInfo.page[0].uuid}" data-log-find-type="rect" data-log-find-path="${DocInfo.parentProjectUuid}">${designator}</span>`;
 			const getter = searchGetterMap[searchField];
 			const keyword = getter ? getter(d) : '';
 
 			eda.sys_Message.showToastMessage(`正在处理 ${successCount + failCount + 1}/${total}`, 'info', 1, null, null, null);
 
 			if (!keyword || String(keyword).trim() === '') {
-				const msg = `器件${deviceName} | 原因: 搜索字段 "${searchField}" 为空`;
+				const msg = `位号${designator}, 器件${deviceName} | 原因: 搜索字段 "${searchField}" 为空`;
 				eda.sys_Log.add(`❌ [失败] ${msg}`, 'error');
 				failCount++;
 				continue;
 			}
 
 			const results = await eda.lib_Device.search(keyword, libUuid, null, null, 10000, 1);
-			if (results.length === 0) {
-				const msg = `器件${deviceName} | 原因: 未在目标库中找到匹配项 (关键词="${keyword}")`;
-				eda.sys_Log.add(`❌ [失败] ${msg}`, 'error');
-				failCount++;
-				continue;
-			}
-
 			const result = results[0];
 			const actionFn = outputActions[outputField];
-
-			if (outputField === 'Symber') {
-				const msg = `器件${deviceName} | 原因: 字段 "${outputField}" 不支持写入`;
-				eda.sys_Log.add(`ℹ️ [跳过] ${msg}`, 'warn');
-				failCount++;
-				continue;
-			}
 
 			const isSuccess = actionFn(result, d);
 
 			if (isSuccess) {
 				const outputValue = result[outputField] || result.value || result.name || result.supplierId || result.ordinal || '?';
-				const msg = `位号${designator}, 器件${deviceName} | 更新 "${outputField}" 为 "${outputValue}"`;
+				const msg = `${deviceName}, ${d.getState_SubPartName()} 已根据查找到的器件 "${d.getState_SubPartName()}" 进行属性参数刷新成功`;
 				eda.sys_Log.add(`✅ [成功] ${msg}`, 'info');
 				successCount++;
 			} else {

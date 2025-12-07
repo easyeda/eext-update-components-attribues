@@ -2,6 +2,9 @@ const assert = (cond, msg = 'Assertion failed') => {
 	if (!cond) throw new Error(msg);
 };
 
+function convertId(id) {
+	return id.replace(/^\$1I/, 'e');
+}
 document.addEventListener('DOMContentLoaded', async () => {
 	const select = document.getElementById('select3');
 	const schselect = document.getElementById('select1');
@@ -76,7 +79,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 	document.getElementById('startbutton').addEventListener('click', async () => {
 		const searchField = select2.value;
 		const libUuid = select.value;
-
+		const DocInfo = await eda.dmt_Schematic.getCurrentSchematicInfo();
 		assert(libUuid, '请选择库归属');
 		assert(searchField, '请选择搜索字段');
 
@@ -109,18 +112,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 		};
 
 		for (const d of devices) {
-			console.log(d.getState_OtherProperty());
+			//console.log(d.getState_OtherProperty());
 			const designator = d.getState_Designator?.() || 'unknown';
-			const deviceName =
-				`<span class="link clicked" data-log-find-sheet="" data-log-find-id="" data-log-find-type="rect" data-log-find-path="">` +
-				d.getState_PrimitiveId() +
-				`</span>`;
 			let keyword = null;
-
 			try {
 				keyword = getSearchValue(d, searchField);
 				if (!keyword) {
-					const msg = `器件${deviceName} | 原因: 搜索字段 "${searchField}" 无有效值`;
+					const msg = `位号${designator}, 器件${deviceName} | 原因: 搜索字段 "${searchField}" 无有效值`;
 					eda.sys_Log.add(`❌ [失败] ${msg}`, 'error');
 					failCount++;
 					continue;
@@ -130,7 +128,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 				const results = await eda.lib_Device.search(keyword, libUuid, null, null, 10000, 1);
 				if (results.length === 0) {
-					const msg = `器件${deviceName} | 原因: 未在目标库中找到匹配项 (关键词="${keyword}")`;
+					const msg = `位号${designator}, 器件${deviceName} | 原因: 未在目标库中找到匹配项 (关键词="${keyword}")`;
 					eda.sys_Log.add(`❌ [失败] ${msg}`, 'error');
 					failCount++;
 					continue;
@@ -141,7 +139,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 				const deleteResult = await eda.sch_PrimitiveComponent.delete(uuid);
 
 				if (!deleteResult) {
-					const msg = `器件${deviceName} | 原因: 删除原始元件失败 (PrimitiveId=${uuid})`;
+					const msg = `位号${designator}, 器件${deviceName} | 原因: 删除原始元件失败 (PrimitiveId=${uuid})`;
 					eda.sys_Log.add(`❌ [失败] ${msg}`, 'error');
 					failCount++;
 					continue;
@@ -164,13 +162,21 @@ document.addEventListener('DOMContentLoaded', async () => {
 				newComp.setState_Designator(d.getState_Designator());
 				newComp.setState_UniqueId(d.getState_UniqueId());
 				newComp.done();
-
-				const msg = `器件${deviceName} | 已替换为库中器件: ${targetDevice.name}`;
+				const Device_PinId = convertId(newComp.getState_PrimitiveId());
+				let PinId = await eda.sch_PrimitiveComponent.getAllPinsByPrimitiveId(Device_PinId);
+				PinId = PinId[0].primitiveId;
+				console.log(d.getState_SubPartName());
+				const deviceName = `<span class="link" data-log-find-id="${PinId}" data-log-find-sheet="${DocInfo.page[0].uuid}" data-log-find-type="rect" data-log-find-path="${DocInfo.parentProjectUuid}">${designator}</span>`;
+				const msg = `${deviceName},  ${d.getState_SubPartName()}  已根据查找到的器件: ${targetDevice.name} 进行删旧放新替换元件成功`;
 				eda.sys_Log.add(`✅ [成功] ${msg}`, 'info');
 				successCount++;
 			} catch (err) {
+				const Device_PinId = convertId(d.getState_PrimitiveId());
+				let PinId = await eda.sch_PrimitiveComponent.getAllPinsByPrimitiveId(Device_PinId); //获取器件所有关联引脚
+				PinId = PinId[0].primitiveId; //获得第一个引脚的图元ID
+				const deviceName = `<span class="link" data-log-find-id="${PinId}" data-log-find-sheet="${DocInfo.page[0].uuid}" data-log-find-type="rect" data-log-find-path="${DocInfo.parentProjectUuid}">${designator}</span>`;
 				const errMsg = err instanceof Error ? err.message : String(err);
-				const msg = `器件${deviceName} | 替换失败: ${errMsg}`;
+				const msg = `器件${deviceName} | 替换失败: 未找到指定器件(${errMsg})`;
 				eda.sys_Log.add(`❌ [异常] ${msg}`, 'error');
 				failCount++;
 			}
