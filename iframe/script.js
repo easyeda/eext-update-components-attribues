@@ -173,8 +173,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 			const designator = d.getState_Designator?.() || 'unknown'; //安全调用 这段是AI写的，非空即调 有点der
 			const DocInfo = await eda.dmt_Schematic.getCurrentSchematicInfo();
 			const Device_PinId = convertId(d.getState_PrimitiveId());
-			let PinId = await eda.sch_PrimitiveComponent.getAllPinsByPrimitiveId(Device_PinId);
-			PinId = PinId[0].primitiveId;
+			let PinId = convertId(d.getState_PrimitiveId());
 
 			const deviceName = `<span class="link" data-log-find-id="${PinId}" data-log-find-sheet="${DocInfo.page[0].uuid}" data-log-find-type="rect" data-log-find-path="${DocInfo.parentProjectUuid}">${designator}</span>`;
 			const getter = searchGetterMap[searchField];
