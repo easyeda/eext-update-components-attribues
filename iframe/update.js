@@ -1,197 +1,176 @@
-const assert = (cond, msg = 'Assertion failed') => {
-	if (!cond) throw new Error(msg);
-};
+async function CloseIFrame() {
+	// 关闭弹窗
+	await eda.sys_IFrame.closeIFrame();
+}
 
 function convertId(id) {
+	//转换位号为可用格式
 	return id.replace(/^\$1I/, 'e');
 }
+
+// const ContorlLog = console.log;
+// console.log = async function(messgae, type = 'info') {
+// 	try {
+// 		await eda.sys_Log.add(messgae, type);
+// 	} catch (e) {
+// 		await eda.sys_Log.add(e, 'error');
+// 	}
+// }
+
+function ChangeKey(key) {
+	// API两边设计不一致所以需要映射
+	switch (key) {
+		case 'manufacturerId':
+			return 'Manufacturer Part';
+		case 'supplierId':
+			return 'Supplier Part';
+		default:
+			return key;
+	}
+}
+
+//取键 返回当前层对象
+function bfs(obj, key) {
+	if (typeof obj !== 'object' || obj === null) {
+		return null;
+	}
+	const queue = [obj];
+	while (queue.length > 0) {
+		const current = queue.shift();
+		// 检查当前对象是否包含目标键
+		if (current.hasOwnProperty(key)) {
+			return current;
+		}
+		// 将当前对象的所有子对象加入队列
+		for (const prop in current) {
+			if (current.hasOwnProperty(prop)) {
+				const value = current[prop];
+				if (typeof value === 'object' && value !== null) {
+					queue.push(value);
+				}
+			}
+		}
+	}
+	return null; // 未找到
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
-	const select = document.getElementById('select3');
-	const schselect = document.getElementById('select1');
-	const select2 = document.getElementById('select2');
+	const SCH_SELECT = document.getElementById('select1'); // 原理图下拉框
+	const DEVICE_NAME = document.getElementById('select2'); // 基准属性名下拉框
+	const SEARCH_LIB = document.getElementById('select3'); // 库归属下拉框
 
+	const START_BUTTON = document.getElementById('startbutton'); // 更新按钮
+	const CLOSE_BUTTON = document.getElementById('closebutton'); // 取消按钮
+
+	const SCH_DEVICES_INFO = await eda.sch_PrimitiveComponent.getAll('part', true); // 原理图所有器件
+	const LIBS_INFO = await eda.lib_LibrariesList.getAllLibrariesList(); // 库列表和库UUID
+
+	const SCH_INFO = await eda.dmt_Schematic.getCurrentSchematicInfo(); // 获取原理图信息
 	try {
-		const projectInfo = await eda.dmt_Project.getCurrentProjectInfo();
-		const data = Array.isArray(projectInfo?.data) ? projectInfo.data : [];
-
-		const firstSchematic = data.find((item) => item?.schematic?.name)?.schematic?.name;
-
-		if (firstSchematic) {
-			schselect.innerHTML = `<option value="${firstSchematic}" selected>${firstSchematic}</option>`;
-		} else {
-			schselect.innerHTML = '<option value="" disabled selected>无可用原理图</option>';
+		// 填充当前原理图
+		SCH_SELECT.innerHTML = ''; // 清空选项
+		const option = document.createElement('option');
+		option.value = SCH_INFO.name;
+		option.text = SCH_INFO.name;
+		SCH_SELECT.add(option); // 添加到下拉框
+		SCH_SELECT.disabled = true; // 禁用下拉框
+	} catch (error) {
+		await eda.sys_Message.showToastMessage('意外的错误' + error, 'error', 3);
+	}
+	try {
+		// 填充公共参数和其他参数
+		const TEMP_DEVICES_ARRAY = [];
+		let i = 0;
+		while (i < SCH_DEVICES_INFO.length) {
+			// 收集额外属性
+			const keys = Object.keys(SCH_DEVICES_INFO[i].getState_OtherProperty());
+			TEMP_DEVICES_ARRAY.push(...keys); // 将元素推进去
+			i++;
 		}
-	} catch (e) {
-		eda.sys_Log.add('加载原理图失败: ' + (e.message || String(e)), 'error');
-		schselect.innerHTML = '<option value="" disabled selected>加载失败</option>';
+		const DEVICE_INFO_ARRAY = [...new Set(TEMP_DEVICES_ARRAY)]; // 数组去重
+		DEVICE_INFO_ARRAY.forEach((key) => {
+			// 填充下拉框属性
+			const option = document.createElement('option');
+			option.value = key; // value
+			option.text = key; // text
+			DEVICE_NAME.add(option); // 添加到下拉框
+		});
+	} catch (error) {
+		await eda.sys_Message.showToastMessage('遍历器件属性失败: ' + error, 'error', 3);
 	}
 
 	try {
-		const libs = await eda.lib_LibrariesList.getAllLibrariesList();
-		const [sysUuid, personalUuid, projectUuid, favoriteUuid] = await Promise.all([
-			eda.lib_LibrariesList.getSystemLibraryUuid(),
-			eda.lib_LibrariesList.getPersonalLibraryUuid(),
-			eda.lib_LibrariesList.getProjectLibraryUuid(),
-			eda.lib_LibrariesList.getFavoriteLibraryUuid(),
-		]);
-
-		const allOptions = [
-			{ uuid: personalUuid, name: '个人' },
-			{ uuid: projectUuid, name: '工程' },
-			{ uuid: favoriteUuid, name: '收藏' },
-			...libs,
-		].filter((lib) => lib.uuid && lib.name);
-
-		select.innerHTML =
-			'<option value="" disabled selected>请选择库归属</option>' +
-			allOptions.map((lib) => `<option value="${lib.uuid}">${lib.name}</option>`).join('');
-	} catch (e) {
-		eda.sys_Log.add('加载库列表失败: ' + (e.message || String(e)), 'error');
-		select.innerHTML = '<option value="" disabled selected>加载失败</option>';
+		// 填充库列表
+		LIBS_INFO.forEach((lib) => {
+			const option = document.createElement('option');
+			option.value = lib.uuid;
+			option.text = lib.name;
+			SEARCH_LIB.add(option);
+		});
+	} catch (error) {
+		await eda.sys_Message.showToastMessage('加载库列表失败: ' + error.message, 'error', 3);
 	}
 
-	try {
-		const allDevices = await eda.sch_PrimitiveComponent.getAll('part', true);
-		const otherPropKeys = new Set();
+	START_BUTTON.addEventListener('click', async () => UpdateDeviceInfo(SEARCH_LIB.value));
+	CLOSE_BUTTON.addEventListener('click', CloseIFrame);
 
-		for (const device of allDevices) {
-			const props = device.getState_OtherProperty();
-			if (props && typeof props === 'object' && !Array.isArray(props)) {
-				Object.keys(props).forEach((key) => {
-					const k = key.trim();
-					if (k) otherPropKeys.add(k);
-				});
+	async function UpdateDeviceInfo(LibUuid) {
+		const OldValue = DEVICE_NAME.value;
+		const value = ChangeKey(DEVICE_NAME.value);
+		const res = await fetch(`${window.location.origin}/api/v2/devices?path=${LibUuid}&uid=${LibUuid}&page=1&pageSize=10000`);
+		const data = await res.json();
+		const currentList = data.result?.lists || [];
+		try {
+			for (const d of SCH_DEVICES_INFO) {
+				const schObj = bfs(d, OldValue);
+				const schVal = schObj?.[OldValue];
+				if (schVal == null) {
+					// 跳过无该属性的器件
+					console.log(d.getState_Designator(), '无属性');
+					continue;
+				}
+				let matched = false; //这里的作用是当整个循环都结束之后依旧没有找到匹配的器件，那么就认为库中没有对应器件，报错
+				for (const c of currentList) {
+					const libObj = bfs(c, value);
+					const libVal = libObj?.[value];
+					if (String(libVal) === String(schVal)) {
+						console.log(d.getState_Designator(), '匹配成功', libObj);
+						const component = { libraryUuid: LibUuid, uuid: bfs(c, 'uuid')?.uuid };
+						// console.log(currentList);
+						// console.log(component);
+						try {
+							await eda.sch_PrimitiveComponent.delete(d.getState_PrimitiveId()); //删除旧器件
+							const newComp = await eda.sch_PrimitiveComponent.create(
+								component,
+								d.getState_X(),
+								d.getState_Y(),
+								d.getState_SubPartName(),
+								d.getState_Rotation(),
+								d.getState_Mirror(),
+								d.getState_AddIntoBom(),
+								d.getState_AddIntoPcb(),
+							);
+							const device = newComp.getState_PrimitiveId(); //图元ID无法被写回，所以从新的器件对象中获取新的图元ID
+							const deviceName = `<span class="link" data-log-find-id="${device}" data-log-find-sheet="${SCH_INFO.page[0].uuid}" data-log-find-type="rect" data-log-find-path="${SCH_INFO.parentProjectUuid}">${d.getState_Designator()}</span>`;
+							newComp.setState_Designator(d.getState_Designator()); //写回位号
+							newComp.setState_UniqueId(d.getState_UniqueId()); //写回唯一ID
+							newComp.done();
+							const msg = `${deviceName}, ${d.getState_SubPartName()} 已根据查找到的器件 "${d.getState_SubPartName()}" 进行属性参数刷新成功`;
+							eda.sys_Log.add(`✅ [成功] ${msg}`, 'info');
+						} catch (错误) {
+							console.log(错误);
+						}
+						matched = true;
+						break;
+					}
+				}
+
+				if (!matched) {
+					console.log(d.getState_Designator(), '匹配失败，值:', schVal);
+				}
 			}
+		} catch (error) {
+			await eda.sys_Message.showToastMessage('意外的错误: ' + (error.message || error), 'error', 3);
 		}
-
-		const dynamicOpts = Array.from(otherPropKeys)
-			.sort()
-			.map((k) => `<option value="${k}">${k}</option>`)
-			.join('');
-
-		if (dynamicOpts) {
-			select2.insertAdjacentHTML('beforeend', dynamicOpts);
-		}
-	} catch (e) {
-		eda.sys_Log.add('动态加载 OtherProperty 字段失败: ' + (e.message || String(e)), 'error');
 	}
-
-	document.getElementById('startbutton').addEventListener('click', async () => {
-		const searchField = select2.value;
-		const libUuid = select.value;
-		const DocInfo = await eda.dmt_Schematic.getCurrentSchematicInfo();
-		assert(libUuid, '请选择库归属');
-		assert(searchField, '请选择搜索字段');
-
-		const devices = await eda.sch_PrimitiveComponent.getAll('part', true);
-		assert(devices.length > 0, '未找到任何可替换的元件');
-
-		const total = devices.length;
-		let successCount = 0;
-		let failCount = 0;
-
-		const searchGetterMap = {
-			Device: (d) => d.getState_Name(),
-			PartNumber: (d) => d.getState_SupplierId(),
-			Symber: (d) => d.getState_Name(),
-			ManufacturerPart: (d) => d.getState_ManufacturerId(),
-			value: (d) => d.getState_Name(),
-			PartCode: (d) => d.getState_Designator(),
-		};
-
-		const getSearchValue = (d, field) => {
-			if (searchGetterMap[field]) return searchGetterMap[field](d);
-			const props = d.getState_OtherProperty();
-			if (props && props.hasOwnProperty(field)) {
-				const v = props[field];
-				if ((typeof v === 'string' || typeof v === 'number') && v !== '') {
-					return String(v);
-				}
-			}
-			return null;
-		};
-
-		for (const d of devices) {
-			//console.log(d.getState_OtherProperty());
-			const designator = d.getState_Designator?.() || 'unknown';
-			let keyword = null;
-			try {
-				keyword = getSearchValue(d, searchField);
-				if (!keyword) {
-					const msg = `位号${designator}, 器件${deviceName} | 原因: 搜索字段 "${searchField}" 无有效值`;
-					eda.sys_Log.add(`❌ [失败] ${msg}`, 'error');
-					failCount++;
-					continue;
-				}
-
-				eda.sys_Message.showToastMessage(`正在处理 ${successCount + failCount + 1}/${total}`, 'info', 1, null, null, null);
-
-				const results = await eda.lib_Device.search(keyword, libUuid, null, null, 10000, 1);
-				if (results.length === 0) {
-					const msg = `位号${designator}, 器件${deviceName} | 原因: 未在目标库中找到匹配项 (关键词="${keyword}")`;
-					eda.sys_Log.add(`❌ [失败] ${msg}`, 'error');
-					failCount++;
-					continue;
-				}
-
-				const targetDevice = results[0];
-				const uuid = d.getState_PrimitiveId();
-				const deleteResult = await eda.sch_PrimitiveComponent.delete(uuid);
-
-				if (!deleteResult) {
-					const msg = `位号${designator}, 器件${deviceName} | 原因: 删除原始元件失败 (PrimitiveId=${uuid})`;
-					eda.sys_Log.add(`❌ [失败] ${msg}`, 'error');
-					failCount++;
-					continue;
-				}
-
-				const tempComp = d.getState_Component();
-				tempComp.libraryUuid = libUuid;
-
-				const newComp = await eda.sch_PrimitiveComponent.create(
-					tempComp,
-					d.getState_X(),
-					d.getState_Y(),
-					d.getState_SubPartName(),
-					d.getState_Rotation(),
-					d.getState_Mirror(),
-					d.getState_AddIntoBom(),
-					d.getState_AddIntoPcb(),
-				);
-
-				newComp.setState_Designator(d.getState_Designator());
-				newComp.setState_UniqueId(d.getState_UniqueId());
-				newComp.done();
-				const Device_PinId = convertId(newComp.getState_PrimitiveId());
-				let PinId = await eda.sch_PrimitiveComponent.getAllPinsByPrimitiveId(Device_PinId);
-				PinId = PinId[0].primitiveId;
-				console.log(d.getState_SubPartName());
-				const deviceName = `<span class="link" data-log-find-id="${PinId}" data-log-find-sheet="${DocInfo.page[0].uuid}" data-log-find-type="rect" data-log-find-path="${DocInfo.parentProjectUuid}">${designator}</span>`;
-				const msg = `${deviceName},  ${d.getState_SubPartName()}  已根据查找到的器件: ${targetDevice.name} 进行删旧放新替换元件成功`;
-				eda.sys_Log.add(`✅ [成功] ${msg}`, 'info');
-				successCount++;
-			} catch (err) {
-				const Device_PinId = convertId(d.getState_PrimitiveId());
-				let PinId = await eda.sch_PrimitiveComponent.getAllPinsByPrimitiveId(Device_PinId); //获取器件所有关联引脚
-				PinId = PinId[0].primitiveId; //获得第一个引脚的图元ID
-				const deviceName = `<span class="link" data-log-find-id="${PinId}" data-log-find-sheet="${DocInfo.page[0].uuid}" data-log-find-type="rect" data-log-find-path="${DocInfo.parentProjectUuid}">${designator}</span>`;
-				const errMsg = err instanceof Error ? err.message : String(err);
-				const msg = `器件${deviceName} | 替换失败: 未找到指定器件(${errMsg})`;
-				eda.sys_Log.add(`❌ [异常] ${msg}`, 'error');
-				failCount++;
-			}
-		}
-
-		const resultMsg = `✅ 完成！共替换 ${successCount}/${total} 个元件（成功:${successCount}, 失败:${failCount}）`;
-		eda.sys_Message.showToastMessage(resultMsg, 'success', 3, null, null, null);
-
-		eda.sys_Log.add('📊 替换任务汇总', 'info');
-		eda.sys_Log.add(`📌 总数: ${total}`, 'info');
-		eda.sys_Log.add(`✅ 成功: ${successCount}`, 'info');
-		eda.sys_Log.add(`❌ 失败: ${failCount}`, 'info');
-	});
-
-	document.getElementById('closebutton').addEventListener('click', () => {
-		eda.sys_IFrame.closeIFrame();
-	});
 });

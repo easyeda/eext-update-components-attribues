@@ -10,7 +10,7 @@
 		<p>将根据所选元素的属性名的值进行查询库里面的器件，再对原理图的元件属性参数进行批量更新</p>
 		<div id="sch">
 			<p>当前原理图：</p>
-			<select name="test" id="select1" disabled>	
+			<select name="test" id="select1" disabled>
 				<option value="">正在读取</option>
 			</select>
 		</div>
@@ -18,10 +18,10 @@
 			<p>选择要查询的基准属性名</p>
 			<select name="test" id="select2">
 				<option value="" disabled selected>请选择...</option>
-				<option value="Device">器件名(Device)</option>
-				<option value="PartNumber">料号(Part Number)</option>
-				<option value="ManufacturerPart">制造商编号（Manufacturer Part）</option>
-				<option value="PartCode">元件编码(Part Code)</option>
+				<option value="device">器件名(Device)</option>
+				<option value="supplierId">料号(Part Number)</option>
+				<option value="manufacturerId">制造商编号（Manufacturer Part）</option>
+				<option value="Value">值(Value)</option>
 			</select>
 		</div>
 		<div id="library">
@@ -34,7 +34,6 @@
 			<button id="closebutton">取消</button>
 		</div>
 
-		<!-- ✅ 脚本移到这里，确保 DOM 已加载 -->
 		<script src="/iframe/update.js"></script>
 	</body>
 </html>
