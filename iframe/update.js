@@ -3,6 +3,10 @@ async function CloseIFrame() {
 	await eda.sys_IFrame.closeIFrame();
 }
 
+function removeTrailingDotNumber(str) {
+	return str.replace(/\.\d+$/, '');
+}
+
 function convertId(id) {
 	//转换位号为可用格式
 	return id.replace(/^\$1I/, 'e');
@@ -116,30 +120,53 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 	async function UpdateDeviceInfo(LibUuid) {
 		const OldValue = DEVICE_NAME.value;
-		const value = ChangeKey(DEVICE_NAME.value);
+		const mappedKeyForLib = ChangeKey(OldValue); // 注意：device 不走 ChangeKey，单独处理
 		const res = await fetch(`${window.location.origin}/api/v2/devices?path=${LibUuid}&uid=${LibUuid}&page=1&pageSize=10000`);
 		const data = await res.json();
 		const currentList = data.result?.lists || [];
+		const total = SCH_DEVICES_INFO.length;
+
 		try {
-			for (const d of SCH_DEVICES_INFO) {
-				const schObj = bfs(d, OldValue);
-				const schVal = schObj?.[OldValue];
+			for (let idx = 0; idx < total; idx++) {
+				const d = SCH_DEVICES_INFO[idx];
+				// === 特殊处理 device 字段 ===
+				let schVal;
+				if (OldValue === 'device') {
+					schVal = removeTrailingDotNumber(d.getState_SubPartName());
+				} else {
+					const schObj = bfs(d, OldValue);
+					schVal = schObj?.[OldValue];
+				}
+
+				const designator = d.getState_Designator();
+				const rawDeviceId = d.getState_PrimitiveId();
+				const convertedDeviceId = convertId(rawDeviceId);
+				const deviceName = `<span class="link" data-log-find-id="${convertedDeviceId}" data-log-find-sheet="${SCH_INFO.page[0].uuid}" data-log-find-type="rect" data-log-find-path="${SCH_INFO.parentProjectUuid}">${designator}</span>`;
+
 				if (schVal == null) {
-					// 跳过无该属性的器件
-					console.log(d.getState_Designator(), '无属性');
+					const msg = `器件${deviceName} | 替换失败: 无基准属性值`;
+					eda.sys_Log.add(`❌ [失败] ${msg}`, 'error');
+					const resultMsg = `进度 (${idx + 1}/${total})`;
+					await eda.sys_Message.showToastMessage(resultMsg, 'info', 3, null, null, null);
 					continue;
 				}
-				let matched = false; //这里的作用是当整个循环都结束之后依旧没有找到匹配的器件，那么就认为库中没有对应器件，报错
+
+				let matched = false;
 				for (const c of currentList) {
-					const libObj = bfs(c, value);
-					const libVal = libObj?.[value];
+					// === 库侧也特殊处理 device ===
+					let libVal;
+					if (OldValue === 'device') {
+						const titleObj = bfs(c, 'display_title');
+						libVal = titleObj?.['display_title'];
+					} else {
+						const libObj = bfs(c, mappedKeyForLib);
+						libVal = libObj?.[mappedKeyForLib];
+					}
+
 					if (String(libVal) === String(schVal)) {
-						console.log(d.getState_Designator(), '匹配成功', libObj);
 						const component = { libraryUuid: LibUuid, uuid: bfs(c, 'uuid')?.uuid };
-						// console.log(currentList);
-						// console.log(component);
 						try {
-							await eda.sch_PrimitiveComponent.delete(d.getState_PrimitiveId()); //删除旧器件
+							await eda.sch_PrimitiveComponent.delete(d.getState_PrimitiveId());
 							const newComp = await eda.sch_PrimitiveComponent.create(
 								component,
 								d.getState_X(),
@@ -150,15 +177,17 @@ document.addEventListener('DOMContentLoaded', async () => {
 								d.getState_AddIntoBom(),
 								d.getState_AddIntoPcb(),
 							);
-							const device = newComp.getState_PrimitiveId(); //图元ID无法被写回，所以从新的器件对象中获取新的图元ID
-							const deviceName = `<span class="link" data-log-find-id="${device}" data-log-find-sheet="${SCH_INFO.page[0].uuid}" data-log-find-type="rect" data-log-find-path="${SCH_INFO.parentProjectUuid}">${d.getState_Designator()}</span>`;
+							const newRawId = newComp.getState_PrimitiveId();
+							const newConvertedId = convertId(newRawId);
+							const newDeviceName = `<span class="link" data-log-find-id="${newConvertedId}" data-log-find-sheet="${SCH_INFO.page[0].uuid}" data-log-find-type="rect" data-log-find-path="${SCH_INFO.parentProjectUuid}">${designator}</span>`;
 							newComp.setState_Designator(d.getState_Designator()); //写回位号
 							newComp.setState_UniqueId(d.getState_UniqueId()); //写回唯一ID
 							newComp.done();
-							const msg = `${deviceName}, ${d.getState_SubPartName()} 已根据查找到的器件 "${d.getState_SubPartName()}" 进行属性参数刷新成功`;
+							const msg = `${newDeviceName}, ${d.getState_SubPartName()} 已根据查找到的器件 "${d.getState_SubPartName()}" 进行属性参数刷新成功`;
 							eda.sys_Log.add(`✅ [成功] ${msg}`, 'info');
 						} catch (错误) {
-							console.log(错误);
+							const msg = `器件${deviceName} | 替换失败: 创建新器件时出错`;
+							eda.sys_Log.add(`❌ [失败] ${msg}`, 'error');
 						}
 						matched = true;
 						break;
@@ -166,8 +195,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 				}
 
 				if (!matched) {
-					console.log(d.getState_Designator(), '匹配失败，值:', schVal);
+					const msg = `器件${deviceName} | 替换失败: 未找到匹配的库器件 (值: ${schVal})`;
+					eda.sys_Log.add(`❌ [失败] ${msg}`, 'error');
 				}
+
+				const resultMsg = `进度 (${idx + 1}/${total})`;
+				await eda.sys_Message.showToastMessage(resultMsg, 'info', 3, null, null, null);
 			}
 		} catch (error) {
 			await eda.sys_Message.showToastMessage('意外的错误: ' + (error.message || error), 'error', 3);
