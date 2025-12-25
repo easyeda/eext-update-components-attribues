@@ -1,16 +1,20 @@
 async function CloseIFrame() {
+	//关闭当前窗口
 	await eda.sys_IFrame.closeIFrame();
 }
 
 function removeTrailingDotNumber(str) {
+	//将子图块名称替换回器件名
 	return str.replace(/\.\d+$/, '');
 }
 
 function convertId(id) {
+	// 将图元ID转换为可被点击的超链接
 	return id.replace(/^\$1I/, 'e');
 }
 
 function ChangeKey(key) {
+	// 字段映射
 	//两种映射
 	switch (key) {
 		case 'manufacturerId':
@@ -23,6 +27,7 @@ function ChangeKey(key) {
 }
 
 function bfs(obj, key) {
+	//广度优先搜索
 	if (typeof obj !== 'object' || obj === null) return null;
 	const queue = [obj];
 	while (queue.length > 0) {
@@ -37,11 +42,12 @@ function bfs(obj, key) {
 	}
 	return null;
 }
+// 使用基准属性去和对应的属性匹配,如果值相等那么就刷新
 document.addEventListener('DOMContentLoaded', async () => {
-	const SCH_SELECT = document.getElementById('select1');
-	const DEVICE_NAME = document.getElementById('select2');
-	const SEARCH_LIB = document.getElementById('select3');
-	const UPDATE_VALUE = document.getElementById('select4');
+	const SCH_SELECT = document.getElementById('select1'); //原理图
+	const DEVICE_NAME = document.getElementById('select2'); //基准属性
+	const SEARCH_LIB = document.getElementById('select3'); //库
+	const UPDATE_VALUE = document.getElementById('select4'); //查询属性
 	const START_BUTTON = document.getElementById('startbutton');
 	const CLOSE_BUTTON = document.getElementById('closebutton');
 	const SCH_DEVICES_INFO = await eda.sch_PrimitiveComponent.getAll('part', true); //原理图中所有器件数组

@@ -7,10 +7,10 @@
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 	</head>
 	<body>
-		<p>将根据所选元素的属性名的值进行查询库里面的器件，再对原理图的元件属性参数进行批量更新</p>
+		<p>将根据所选元素的属性名的值进行查询库里面的器件，再对原理图的元件进行批量删旧放新的方式更新</p>
 		<div id="sch">
 			<p>当前原理图：</p>
-			<select name="test" id="select1" disabled>
+			<select name="test" id="select1">
 				<option value="">正在读取</option>
 			</select>
 		</div>
@@ -19,9 +19,9 @@
 			<select name="test" id="select2">
 				<option value="" disabled selected>请选择...</option>
 				<option value="device">器件名(Device)</option>
-				<option value="supplierId">料号(Part Number)</option>
-				<option value="manufacturerId">制造商编号（Manufacturer Part）</option>
-				<option value="symbol">符号名（symbol）</option>
+				<option value="Part Number">料号(Part Number)</option>
+				<option value="Manufacturer Part">制造商编号(Manufacturer Part)</option>
+				<option value="Supplier Part">供应商编号(Supplier Part)</option>
 				<option value="Value">值(Value)</option>
 			</select>
 		</div>
@@ -29,12 +29,22 @@
 			<p>选择要查询的库归属</p>
 			<select name="test" id="select3"></select>
 		</div>
-		<p>警告，这个操作会把所有元器件查询一次进行更新，建议操作前先备份工程</p>
+		<div id="value2">
+			<p>选择要匹配的器件属性名</p>
+			<select name="test" id="select4">
+				<option value="" disabled selected>请选择...</option>
+				<option value="device">器件名(Device)</option>
+				<option value="Part Number">料号(Part Number)</option>
+				<option value="Manufacturer Part">制造商编号(Manufacturer Part)</option>
+				<option value="Supplier Part">供应商编号(Supplier Part)</option>
+				<option value="Value">值(Value)</option>
+			</select>
+		</div>
+		<p>提示: 仅支持搜索匹配器件的"器件名","料号","制造商编号","值","供应商编号","元件编码"属性</p>
+		<p>警告: 这个操作会把所有元器件查询一次进行删旧放新操作，建议操作前先备份工程</p>
 		<div id="Choose">
 			<button id="startbutton">更新</button>
 			<button id="closebutton">取消</button>
 		</div>
-
-		<script src="/iframe/update.js"></script>
 	</body>
 </html>

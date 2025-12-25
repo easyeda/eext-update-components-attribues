@@ -2,11 +2,11 @@
 export function activate(status?: 'onStartupFinished', arg?: string): void {}
 
 export function deleteAndPlaceNew(): void {
-	eda.sys_IFrame.openIFrame('/iframe/update.html', 470, 380);
+	eda.sys_IFrame.openIFrame('/iframe/update.html', 500, 520);
 }
 
 export function updateAttributes(): void {
-	eda.sys_IFrame.openIFrame('/iframe/index.html', 470, 380);
+	eda.sys_IFrame.openIFrame('/iframe/index.html', 500, 520);
 }
 
 export function debug(): void {
