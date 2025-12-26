@@ -100,13 +100,18 @@ document.addEventListener('DOMContentLoaded', async () => {
 		const currentList = data.result?.lists || []; //指定器件库中的器件列表
 		const JiZhun = ChangeKey(DEVICE_NAME.value); //映射后的基准属性值
 		const ChaXun = UPDATE_VALUE.value; //查询的指定属性值
+		var success = 0; //成功次数
+		var field = 0; //失败次数
+		var temp = SCH_DEVICES_INFO.length; //总次数
 		console.log('当前基准属性', JiZhun);
 		console.log('当前查询属性', ChaXun);
 		for (const s of SCH_DEVICES_INFO) {
 			let sch_value = bfs(s, JiZhun)?.[JiZhun]; //查询到的指定的键的值
 			if (sch_value != undefined && sch_value != null) {
 				sch_value = removeTrailingDotNumber(sch_value);
-				console.log(s.getState_Designator(), '的属性为', sch_value);
+
+				let foundMatch = false;
+
 				for (const c of currentList) {
 					const temp_value = bfs(c, ChaXun)?.[ChaXun];
 					const addToBom = c?.['attributes']?.['Add into BOM'] === 'yes';
@@ -118,8 +123,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 					const attributes = c?.['attributes'];
 					if (temp_value === sch_value) {
 						//如果两个键的值一致
-						console.log(s.getState_Designator(), '有对应匹配值', temp_value, sch_value);
-						const newdeivce = await eda.sch_PrimitiveComponent.create(
+						const newdevice = await eda.sch_PrimitiveComponent.create(
 							s.getState_Component(),
 							s.getState_X(),
 							s.getState_Y(),
@@ -129,19 +133,46 @@ document.addEventListener('DOMContentLoaded', async () => {
 							s.getState_AddIntoBom(),
 							s.getState_AddIntoPcb(),
 						);
-						newdeivce.setState_UniqueId(s.getState_UniqueId());
-						newdeivce.setState_Designator(s.getState_Designator());
+						success++;
+						newdevice.setState_UniqueId(s.getState_UniqueId());
+						newdevice.setState_Designator(s.getState_Designator());
 						eda.sch_PrimitiveComponent.delete(s);
+						newdevice.done();
+						const designator = newdevice.getState_Designator(); //位号
+						const rawDeviceId = newdevice.getState_PrimitiveId(); //图元ID
+						const convertedDeviceId = convertId(rawDeviceId); //转换后的图元ID
+						const deviceName = `<span class="link" data-log-find-id="${convertedDeviceId}" data-log-find-sheet="${SCH_INFO.page[0].uuid}" data-log-find-type="rect" data-log-find-path="${SCH_INFO.parentProjectUuid}">${designator}</span>`;
+						const msg = `${deviceName}, ${newdevice.getState_SubPartName()} 已根据查找到的器件 "${newdevice.getState_SubPartName()}" 进行属性参数刷新成功`;
+						eda.sys_Log.add(`✅ [成功] ${msg}`, 'info');
+
+						foundMatch = true;
+						break;
 					}
 				}
+
+				if (!foundMatch) {
+					field++;
+					const designator = s.getState_Designator(); //位号
+					const rawDeviceId = s.getState_PrimitiveId(); //图元ID
+					const convertedDeviceId = convertId(rawDeviceId); //转换后的图元ID
+					const deviceName = `<span class="link" data-log-find-id="${convertedDeviceId}" data-log-find-sheet="${SCH_INFO.page[0].uuid}" data-log-find-type="rect" data-log-find-path="${SCH_INFO.parentProjectUuid}">${designator}</span>`;
+					const msg = `${deviceName}, ${s.getState_SubPartName()}没有对应的属性`;
+					eda.sys_Log.add(`❌ [失败] ${msg}`, 'error');
+				}
 			} else {
-				console.log(s.getState_Designator(), '没有此属性');
+				// 原理图中无基准属性值，也视为失败（保持原逻辑结构）
+				field++;
+				const designator = s.getState_Designator();
+				const rawDeviceId = s.getState_PrimitiveId();
+				const convertedDeviceId = convertId(rawDeviceId);
+				const deviceName = `<span class="link" data-log-find-id="${convertedDeviceId}" data-log-find-sheet="${SCH_INFO.page[0].uuid}" data-log-find-type="rect" data-log-find-path="${SCH_INFO.parentProjectUuid}">${designator}</span>`;
+				const msg = `${deviceName}, ${s.getState_SubPartName()}没有对应的属性`;
+				eda.sys_Log.add(`❌ [失败] ${msg}`, 'error');
 			}
-			const designator = s.getState_Designator(); //位号
-			const rawDeviceId = s.getState_PrimitiveId(); //图元ID
-			const convertedDeviceId = convertId(rawDeviceId); //转换后的图元ID
-			const deviceName = `<span class="link" data-log-find-id="${convertedDeviceId}" data-log-find-sheet="${SCH_INFO.page[0].uuid}" data-log-find-type="rect" data-log-find-path="${SCH_INFO.parentProjectUuid}">${designator}</span>`;
+			await eda.sys_Message.showToastMessage(`${success + field}/${temp}`, 'info');
 		}
+		await eda.sys_Message.showToastMessage('元器件替换完成', 'info');
+		await eda.sys_Log.add(`本次任务成功替换器件${success}个，失败${field}个`, 'info');
 		console.log(currentList);
 		console.log(SCH_DEVICES_INFO);
 	}

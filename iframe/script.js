@@ -100,13 +100,18 @@ document.addEventListener('DOMContentLoaded', async () => {
 		const currentList = data.result?.lists || []; //指定器件库中的器件列表
 		const JiZhun = ChangeKey(DEVICE_NAME.value); //映射后的基准属性值
 		const ChaXun = UPDATE_VALUE.value; //查询的指定属性值
+		var success = 0; //成功次数
+		var field = 0; //失败次数
+		var temp = SCH_DEVICES_INFO.length; //总次数
 		console.log('当前基准属性', JiZhun);
 		console.log('当前查询属性', ChaXun);
 		for (const s of SCH_DEVICES_INFO) {
 			let sch_value = bfs(s, JiZhun)?.[JiZhun]; //查询到的指定的键的值
 			if (sch_value != undefined && sch_value != null) {
 				sch_value = removeTrailingDotNumber(sch_value);
-				console.log(s.getState_Designator(), '的属性为', sch_value);
+				// ✅ 修复点1：每个器件独立初始化标志位
+				var Issuccess = false;
+
 				for (const c of currentList) {
 					const temp_value = bfs(c, ChaXun)?.[ChaXun];
 					const addToBom = c?.['attributes']?.['Add into BOM'] === 'yes';
@@ -118,7 +123,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 					const attributes = c?.['attributes'];
 					if (temp_value === sch_value) {
 						//如果两个键的值一致
-						console.log(s.getState_Designator(), '有对应匹配值', temp_value, sch_value);
 						s.setState_AddIntoBom(addToBom); //是否加入bom
 						s.setState_AddIntoPcb(ConvertToPcb); //是否转到pcb
 						s.setState_Manufacturer(Manufacturer); //制造商
@@ -127,16 +131,42 @@ document.addEventListener('DOMContentLoaded', async () => {
 						s.setState_SupplierId(SupplierPart);
 						s.setState_OtherProperty(attributes);
 						s.done();
+						success++;
+						const designator = s.getState_Designator(); //位号
+						const rawDeviceId = s.getState_PrimitiveId(); //图元ID
+						const convertedDeviceId = convertId(rawDeviceId); //转换后的图元ID
+						const deviceName = `<span class="link" data-log-find-id="${convertedDeviceId}" data-log-find-sheet="${SCH_INFO.page[0].uuid}" data-log-find-type="rect" data-log-find-path="${SCH_INFO.parentProjectUuid}">${designator}</span>`;
+						const msg = `${deviceName}, ${s.getState_SubPartName()} 已根据查找到的器件 "${c.name || c.partId}" 进行属性参数刷新成功`;
+						eda.sys_Log.add(`✅ [成功] ${msg}`, 'info');
+						Issuccess = true;
+						break; // ✅ 修复点2：匹配后立即跳出，避免后续干扰
 					}
+					// ❌ 删除了 else { Issuccess = false } —— 不再错误覆盖
+				}
+				if (!Issuccess) {
+					field++;
+					const designator = s.getState_Designator(); //位号
+					const rawDeviceId = s.getState_PrimitiveId(); //图元ID
+					const convertedDeviceId = convertId(rawDeviceId); //转换后的图元ID
+					const deviceName = `<span class="link" data-log-find-id="${convertedDeviceId}" data-log-find-sheet="${SCH_INFO.page[0].uuid}" data-log-find-type="rect" data-log-find-path="${SCH_INFO.parentProjectUuid}">${designator}</span>`;
+					const msg = `${deviceName}, ${s.getState_SubPartName()} 没有对应的属性`;
+					// 注意：temp_value 在此处可能未定义，因此从日志中移除对照值以避免报错
+					eda.sys_Log.add(`❌ [失败] ${msg}`, 'error');
 				}
 			} else {
-				console.log(s.getState_Designator(), '没有此属性');
+				// 原理图中无基准属性，也视为失败
+				field++;
+				const designator = s.getState_Designator();
+				const rawDeviceId = s.getState_PrimitiveId();
+				const convertedDeviceId = convertId(rawDeviceId);
+				const deviceName = `<span class="link" data-log-find-id="${convertedDeviceId}" data-log-find-sheet="${SCH_INFO.page[0].uuid}" data-log-find-type="rect" data-log-find-path="${SCH_INFO.parentProjectUuid}">${designator}</span>`;
+				const msg = `${deviceName}, ${s.getState_SubPartName()} 缺少基准属性 "${JiZhun}"`;
+				eda.sys_Log.add(`❌ [失败] ${msg}`, 'error');
 			}
-			const designator = s.getState_Designator(); //位号
-			const rawDeviceId = s.getState_PrimitiveId(); //图元ID
-			const convertedDeviceId = convertId(rawDeviceId); //转换后的图元ID
-			const deviceName = `<span class="link" data-log-find-id="${convertedDeviceId}" data-log-find-sheet="${SCH_INFO.page[0].uuid}" data-log-find-type="rect" data-log-find-path="${SCH_INFO.parentProjectUuid}">${designator}</span>`;
+			await eda.sys_Message.showToastMessage(`${success + field}/${temp}`, 'info');
 		}
+		await eda.sys_Message.showToastMessage('元器件替换完成', 'info');
+		await eda.sys_Log.add(`本次任务成功替换器件${success}个，失败${field}个`, 'info');
 		console.log(currentList);
 		console.log(SCH_DEVICES_INFO);
 	}
