@@ -109,7 +109,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 			let sch_value = bfs(s, JiZhun)?.[JiZhun]; //查询到的指定的键的值
 			if (sch_value != undefined && sch_value != null) {
 				sch_value = removeTrailingDotNumber(sch_value);
-				// ✅ 修复点1：每个器件独立初始化标志位
+
 				var Issuccess = false;
 
 				for (const c of currentList) {
@@ -139,9 +139,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 						const msg = `${deviceName}, ${s.getState_SubPartName()} 已根据查找到的器件 "${c.name || c.partId}" 进行属性参数刷新成功`;
 						eda.sys_Log.add(`✅ [成功] ${msg}`, 'info');
 						Issuccess = true;
-						break; // ✅ 修复点2：匹配后立即跳出，避免后续干扰
+						break;
 					}
-					// ❌ 删除了 else { Issuccess = false } —— 不再错误覆盖
 				}
 				if (!Issuccess) {
 					field++;
