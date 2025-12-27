@@ -21,7 +21,7 @@ function ChangeKey(key) {
 			'Manufacturer Part': 'manufacturerId',
 			'supplierId': 'Supplier Part',
 			'Supplier Part': 'supplierId',
-			'device': 'partId',
+			'device': 'subPartName',
 		}[key] || key
 	);
 }
@@ -127,9 +127,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 						s.setState_AddIntoPcb(ConvertToPcb); //是否转到pcb
 						s.setState_Manufacturer(Manufacturer); //制造商
 						s.setState_ManufacturerId(ManufacturerPart); //制造商编号
-						s.setState_Supplier(Supplier);
-						s.setState_SupplierId(SupplierPart);
-						s.setState_OtherProperty(attributes);
+						s.setState_Supplier(Supplier); //供应商
+						s.setState_SupplierId(SupplierPart); //供应商编号
+						s.setState_OtherProperty(attributes); //其他参数
 						s.done();
 						success++;
 						const designator = s.getState_Designator(); //位号

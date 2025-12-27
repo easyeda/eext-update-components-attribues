@@ -21,7 +21,7 @@ function ChangeKey(key) {
 			'Manufacturer Part': 'manufacturerId',
 			'supplierId': 'Supplier Part',
 			'Supplier Part': 'supplierId',
-			'device': 'partId',
+			'device': 'subPartName',
 		}[key] || key
 	);
 }
