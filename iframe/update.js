@@ -136,7 +136,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 						success++;
 						newdevice.setState_UniqueId(s.getState_UniqueId());
 						newdevice.setState_Designator(s.getState_Designator());
-						eda.sch_PrimitiveComponent.delete(s);
+						const delete_result = await eda.sch_PrimitiveComponent.delete(s);
 						newdevice.done();
 						const designator = newdevice.getState_Designator(); //位号
 						const rawDeviceId = newdevice.getState_PrimitiveId(); //图元ID
